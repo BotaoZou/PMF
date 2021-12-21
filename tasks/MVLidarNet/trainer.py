@@ -72,14 +72,13 @@ class Trainer(object):
     # ------------------------------------------------------------------
     def _initOptimizer(self):
         # check params
-        sgd_params = [
-            {"params": self.model.parameters()}]
+        # check params
+        adam_params = [{"params": self.model.parameters()}]
 
-        optimizer = torch.optim.SGD(
-            params=sgd_params, lr=self.settings.lr,
-            nesterov=True,
-            momentum=self.settings.momentum,
-            weight_decay=self.settings.weight_decay)
+        adam_opt = torch.optim.AdamW(
+            params=adam_params, lr=self.settings.lr)
+
+        optimizer = adam_opt
 
         return optimizer
 
@@ -89,7 +88,8 @@ class Trainer(object):
             trainset = pc_processor.dataset.semantic_kitti.SemanticKitti(
                 root=self.settings.data_root,
                 sequences=[0,1,2,3,4,5,6,7,9,10],
-                config_path=data_config_path
+                config_path=data_config_path,
+                has_image=False
             )
             self.cls_weight = 1 / (trainset.cls_freq + 1e-3)
             self.ignore_class = []
@@ -267,21 +267,15 @@ class Trainer(object):
         total_iter = len(dataloader)
         t_start = time.time()
 
-        feature_mean = torch.Tensor(self.settings.config["sensor"]["img_mean"]).unsqueeze(
-            0).unsqueeze(2).unsqueeze(2).cuda()
-        feature_std = torch.Tensor(self.settings.config["sensor"]["img_stds"]).unsqueeze(
-            0).unsqueeze(2).unsqueeze(2).cuda()
-
-        for i, (input_feature, input_mask, input_label) in enumerate(dataloader):
+        for i, (input_feature, input_label, input_mask) in enumerate(dataloader):
             t_process_start = time.time()
             input_feature = input_feature.cuda()
             input_mask = input_mask.cuda()
-            input_feature[:, 0:5] = (
-                input_feature[:, 0:5] - feature_mean) / feature_std * \
-                input_mask.unsqueeze(1).expand_as(input_feature[:, 0:5])
-            pcd_feature = input_feature[:, 0:5]
+            pcd_feature = input_feature[:, 1:4]
+            input_feature = input_feature * \
+                input_mask.unsqueeze(1).expand_as(input_feature)
             input_label = input_label.cuda().long()
-            label_mask = input_label.gt(0)
+
 
             # forward propergation
             if mode == "Train":
@@ -296,11 +290,11 @@ class Trainer(object):
                 # backward
                 self._backward(total_loss)
                 # update lr after backward (required by pytorch)
-                self.scheduler.step()
+                # self.scheduler.step()
 
             else:
                 with torch.no_grad():
-                    lidar_pred = self.model(pcd_feature, img_feature)
+                    lidar_pred = self.model(pcd_feature)
 
                     loss_cross_entropy = self.criterion["cross_entropy_loss"]
 
@@ -393,29 +387,6 @@ class Trainer(object):
             self.recorder.tensorboard.add_scalar(
                 tag="{}_LossPerception".format(mode), scalar_value=loss_perception_meter.avg, global_step=epoch)
 
-
-
-            if epoch % self.settings.print_frequency == 0 and self.settings.dataset != "nuScenes":
-                # img log
-                for i in range(pcd_feature.size(1)):
-                    self.recorder.tensorboard.add_image(
-                        "{}_PCDFeature_{}".format(mode, i), pcd_feature[0, i:i+1].cpu(), epoch)
-
-                for i in range(lidar_pred.size(1)):
-                    self.recorder.tensorboard.add_image(
-                        "{}_Pred_cls_{:02d}_{}".format(mode, i, self.mapped_cls_name[i]), lidar_pred[0, i:i+1].cpu(), epoch)
-
-
-                for i in range(lidar_pred.size(1)):
-                    self.recorder.tensorboard.add_image("{}_Label_cls_{:02d}_{}".format(
-                        mode, i, self.mapped_cls_name[i]), input_label[0:1].eq(i).cpu(), epoch)
-
-                self.recorder.tensorboard.add_image(
-                    "{}_RGB".format(mode), img_feature[0].cpu(), epoch)
-
-            log_str = ">>> {} Loss {:0.4f} Acc {:0.4f} IOU {:0.4F} Recall {:0.4f}".format(
-                mode, loss_meter.avg, mean_acc.item(), mean_iou.item(), mean_recall.item())
-            self.recorder.logger.info(log_str)
 
         result_metrics = {
             "Acc": mean_acc.item(),

@@ -1,7 +1,7 @@
 # common config
-save_path: "../../experiments/PMF-SemanticKitti/"
+save_path: "../../experiments/MVL-SemanticKitti/"
 seed: 1
-gpu: "0,1,2,3"
+gpu: "4,5,6,7"
 print_frequency: 2
 n_threads: 4
 experiment_id: "baseline_timestamp"
@@ -11,8 +11,8 @@ val_only: false
 has_label: true
 is_debug: false
 n_epochs: 1
-batch_size: [2, 4]
-lr: 0.001
+batch_size: [4, 4]
+lr: 0.0001
 warmup_epochs: 1
 momentum: 0.9
 weight_decay: 0.00001
@@ -20,7 +20,7 @@ val_frequency: 1
 
 dataset: "SemanticKitti"
 nclasses: 7 # 6+1(unknown)
-data_root: "/path/to/semantic-kitti-fov/sequences"
+data_root: "/mnt/cephfs/dataset/semantic-kitti/dataset/sequences"
 
 base_channels: 32
 img_backbone: "resnet34"
@@ -67,15 +67,13 @@ augmentation:
 
 sensor:
   name: "HDL64"
-  type: "perception-aware"
-  # crop size of validation samples
-  proj_h: 384
-  proj_w: 1232
-  # crop size of training samples
-  proj_ht: 256 
-  proj_wt: 1024 
-  h_pad: 7
-  w_pad: 3
+  type: "spherical"
+  proj_h: 64
+  proj_w: 2048
+  fov_up: 3.
+  fov_down: -25.
+  fov_left: -45
+  fov_right: 45
 
   img_mean:
     - 12.12

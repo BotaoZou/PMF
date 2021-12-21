@@ -51,7 +51,7 @@ class SemanticKitti(object):
     def __init__(self, root,  # directory where data is
                  sequences,  # sequences for this data (e.g. [1,3,4,6])
                  config_path,  # directory of config file
-                 has_image=True,
+                 has_image=False,
                  has_pcd=True,
                  has_label=True):
         self.root = root
