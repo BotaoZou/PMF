@@ -90,6 +90,8 @@ class PerspectiveViewLoader(Dataset):
             seq_id, pointcloud[:, :3], image.shape[1], image.shape[0])
 
         y_data = mapped_pointcloud[:, 1].astype(np.int32)
+
+        # 短边
         x_data = mapped_pointcloud[:, 0].astype(np.int32)
 
         image = image.astype(np.float32) / 255.0
