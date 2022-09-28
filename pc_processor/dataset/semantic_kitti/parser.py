@@ -51,7 +51,7 @@ class SemanticKitti(object):
     def __init__(self, root,  # directory where data is
                  sequences,  # sequences for this data (e.g. [1,3,4,6])
                  config_path,  # directory of config file
-                 has_image=True,
+                 has_image=False,
                  has_pcd=True,
                  has_label=True):
         self.root = root
@@ -250,6 +250,7 @@ class SemanticKitti(object):
         if not self.has_image:
             raise ValueError("cannot mappint pointcloud with has_image=False")
 
+        # img_h = image.shape[1]
         proj_matrx = self.proj_matrix[seq]
         # only keep point in front of the vehicle
         keep_mask = pointcloud[:, 0] > 0
